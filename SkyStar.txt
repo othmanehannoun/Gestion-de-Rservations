@@ -1,0 +1,182 @@
+------------ création de la table clients-----------
+ CREATE TABLE Clients(
+    numPass VARCHAR(15) PRIMARY KEY, 
+	nom VARCHAR(255) NOT NULL UNIQUE,
+ 	ville VARCHAR(255) NOT NULL
+ );
+ 
+ SELECT * from Clients
+ ------------ insertion des tables " Client" ----------------------
+ INSERT INTO Clients VALUES ('1234','othmane Hannoune','safi');
+ INSERT INTO Clients VALUES ('4321','Ghizlan ghizlan','safi');
+  INSERT INTO Clients VALUES ('1236','AHMED AAA','casablanca');
+
+ 
+--------------------------------------------------------------------------------------------------------------------
+------------ create table RESERVATIONS -----------
+   CREATE TABLE Reservations(
+     numR INTEGER PRIMARY KEY,  
+  	 date_départ date,
+	 date_arrivée date NOT NULL, 
+	 numPass VARCHAR(15),
+	 numC INTEGER,
+	   CONSTRAINT fk_Resarvation FOREIGN KEY(numPass) REFERENCES Clients(numPass) ON DELETE CASCADE ON UPDATE CASCADE,
+	   CONSTRAINT fk_chambre FOREIGN KEY(numC) REFERENCES Chambres(numC) ON DELETE CASCADE ON UPDATE CASCADE
+  );
+  
+ SELECT * from Reservations
+ ----------------------insert tables Chambres----------------------
+ INSERT INTO Reservations VALUES (1, '10/06/2021', '12/06/2021', '1234', 123);
+ INSERT INTO Reservations VALUES (2, '10/06/2021', '12/06/2021', '4321', 124);
+ INSERT INTO Reservations VALUES (3, '10/06/2021', '12/06/2021', '4321', 124);
+  INSERT INTO Reservations VALUES (4, '10/06/2021', '12/06/2021', '4321', 123);
+
+
+
+
+ 
+ ---------------------------------------------------------------------------------------------------------------------
+ ------------ création de la table CHAMBRES-----------
+ CREATE TABLE Chambres(
+         numC INTEGER PRIMARY KEY, 
+         lits INTEGER NOT NULL DEFAULT 2,
+         prix INTEGER NOT NULL
+);
+
+SELECT * from Chambres
+------------- INSERT TABLE CHAMBRES-------------------
+INSERT INTO Chambres VALUES (123, 1, 1500 );
+INSERT INTO Chambres VALUES (124, 2, 1400 );
+
+
+---------------------------------------------------------------------------------------------------------
+-- //First Function 
+CREATE or replace FUNCTION chambres_réservées ()
+RETURNS TABLE(numC INTEGER, lits INTEGER, prix INTEGER ) as $chambre$
+
+BEGIN
+    RETURN QUERY SELECT
+     ch.*
+    FROM
+     "chambres" AS ch,"reservations" AS r
+     WHERE ch."numc" = r."numc"
+	 GROUP BY ch."numc";
+	
+END;
+$chambre$ LANGUAGE 'plpgsql';
+
+-- Function 2
+
+CREATE or replace FUNCTION ListClient ()
+RETURNS TABLE(numPass varchar ,nom varchar,ville varchar) as $list$
+
+BEGIN
+    RETURN QUERY SELECT
+     cl.*
+    FROM
+     "chambres" AS ch,"reservations" AS r,"clients" AS cl
+     WHERE ch."numc"=r."numc" AND r."numpass" = cl."numpass" AND ch."prix">700
+	 GROUP BY cl."numpass";
+END; 
+$list$ LANGUAGE 'plpgsql';
+
+-- Function 3
+
+CREATE or replace FUNCTION chambresRéservéesParClient ()
+RETURNS TABLE(numC varchar ,lits INTEGER, prix INTEGER) as $list$
+
+BEGIN
+    RETURN QUERY SELECT
+     ch.*
+    FROM
+     "chambres" AS ch,"reservations" AS r,"clients" AS cl
+     WHERE ch."numc"=r."numc" AND r."numpass" = cl."numpass" AND cl.nom Like'A%'
+	 GROUP BY ch."numc";
+END; 
+$list$ LANGUAGE 'plpgsql';
+
+-- FUNCTION 4
+CREATE or replace FUNCTION clientsRéservées ()
+RETURNS TABLE(numPass varchar ,nom varchar,ville varchar ) as $list$
+
+BEGIN
+    RETURN QUERY SELECT 
+     cl.*
+    FROM
+     "chambres" AS ch, "reservations" AS r,"clients" AS cl
+     WHERE ch."numc"= r."numc" AND r."numpass" = cl."numpass" 
+	 GROUP BY cl."numpass"
+	 having count(ch."numc")>2;
+END; 
+$list$ LANGUAGE 'plpgsql';
+
+
+-- 
+-- 
+-- 
+-- FUNCTION 5
+CREATE or replace FUNCTION clientsHabitent ()
+RETURNS TABLE(numPass varchar ,nom varchar,ville varchar) as $list$
+
+BEGIN
+    RETURN QUERY SELECT 
+     cl.*
+    FROM
+     "chambres" AS ch, "reservations" AS r,"clients" AS cl
+     WHERE ch."numc"= r."numc" AND r."numpass" = cl."numpass" AND cl."ville"='casablanca' 
+	 GROUP BY cl."numpass"
+	having count(ch."numc")>2 AND count(r."numpass")>2 ;
+END; 
+$list$ LANGUAGE 'plpgsql';
+
+-- 
+-- 
+
+-- PROCEDURE 6
+create or replace procedure ModifierPrix()
+language plpgsql    
+as $update$
+begin
+    -- subtracting the amount from the sender's account 
+    update "chambres" 
+    set prix = 1500 
+    where prix >= 1700;
+end;$update$
+
+
+-- PROCEDURE 7
+create or replace procedure supprimerClient()
+language plpgsql    
+as $delete$
+begin
+    -- subtracting the amount from the sender's account 
+    delete from "clients" WHERE "clients"."numpass" Not in(select "numpass" FROM "reservations" );
+end;$delete$
+
+
+-- Procedure 8
+create or replace procedure ModifierPrixPourLits()
+language plpgsql    
+as $updatePrice$
+begin
+    -- subtracting the amount from the sender's account 
+    update "chambres" 
+    set prix = prix + 100
+    where lits > 1;
+end;$updatePrice$
+
+
+--  run function 
+  SELECT chambres_réservées()
+  SELECT ListClient()
+  SELECT chambresRéservéesParClient()
+  SELECT clientsRéservées()
+  SELECT clientsHabitent()
+
+-- run Procedure
+  CALL ModifierPrix()
+  CALL supprimerClient()
+  CALL ModifierPrixPourLits()
+
+
+ 
